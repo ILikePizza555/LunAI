@@ -8,12 +8,16 @@
     flake-utils.lib.eachDefaultSystem (system:
     let
         pkgs = import nixpkgs { inherit system; };
+        python-packages = p: with p; [
+            discordpy
+            openai
+        ];
+        python-with-packages = pkgs.python310.withPackages python-packages;
     in
         {
             devShells.default = pkgs.mkShell {
                 buildInputs = [
-                    pkgs.python310
-                    pkgs.python310Packages.pip
+                    python-with-packages
                 ];
             };
         }

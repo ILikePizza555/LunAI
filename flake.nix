@@ -12,7 +12,8 @@
         {
             devShells.default = pkgs.mkShell {
                 buildInputs = [
-                    pkgs.python311
+                    pkgs.python310
+                    pkgs.python310Packages.pip
                 ];
             };
         }

@@ -33,6 +33,9 @@ Limit all responses to 2000 characters.
 """
 
 # Setup logging
+app_logger = logging.getLogger("lunai")
+app_logger.setLevel(logging.DEBUG)
+
 discord_logger = logging.getLogger("discord")
 discord_logger.setLevel(logging.DEBUG)
 # Set the discord http logger level to info
@@ -76,15 +79,20 @@ async def on_message(message: discord.Message):
         return
 
     async with message.channel.typing():
+        app_logger.debug("Getting response from OpenAI")
+
+        latest_user_message = f"{message.author}: {message.content}";
+        app_logger.debug("User message: %s", latest_user_message)
+
         chat_resp = await openai.ChatCompletion.acreate(
             model=OPENAI_ENGINE,
             messages = [
                 {"role": "system", "content": PROMPT},
-                {"role": "user", "content": f"{message.author}: {message.content}"}
+                {"role": "user", "content": latest_user_message}
             ]
         )
     
-    message.channel.send(chat_resp['choices'][0]['message']['content'])
+    await message.channel.send(chat_resp['choices'][0]['message']['content'])
 
 discord_token = os.getenv("DISCORD_BOT_TOKEN")
 client.run(discord_token, log_handler=None)

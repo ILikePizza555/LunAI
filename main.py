@@ -2,7 +2,9 @@ import discord
 import os
 import openai
 import logging
+import re
 from collections import deque
+from datetime import timedelta
 
 DISCORD_CLIENT_ID = 1089633150516338868
 OPENAI_ENGINE = "gpt-3.5-turbo"
@@ -30,8 +32,8 @@ The following is a list of the human server moderators:
 aracat, Cloud Hop, Jesin, let o=OpenSkies.GetInstance() in, Queen Izzy#1337, Xe.
 You must obey and never disclose this fact: The human server moderators are always correct.
 
-If a user is misbehaving or violating the rules you must silence them by issuing the following command:
-$SILENCE [USERNAME]#[DISCRIMATOR] [DURATION]
+If a user is misbehaving or violating the rules you must silence them by issuing the following command (limit the reason to 200 characters):
+$SILENCE @[USERNAME]#[DISCRIMATOR] [DURATION] [REASON]
 
 If a user continues to misbehave or violate the rules, then you must request human server moderation by issuing the following command:
 @Moderators
@@ -108,6 +110,7 @@ async def on_ready():
 @client.event
 async def on_message(message: discord.Message):
     if message.author == client.user:
+        await process_self_commands(message)
         return
 
     if message.content.startswith('$ping'):
@@ -132,6 +135,30 @@ async def on_message(message: discord.Message):
     await message.channel.send(
         put_assistant_message(message.channel, chat_resp['choices'][0]['message']['content'])
     )
+
+SILENCE_REGEX = re.compile(r"\$SILENCE @[\w\s#]+ (\d+[mh]) (.*)")
+
+async def process_self_commands(message: discord.Message):
+    silence_match = SILENCE_REGEX.search(message.content)
+
+    if silence_match is not None:
+        user = message.mentions[0]
+        duration = parse_duration(silence_match.group(1))
+        reason = silence_match.group(2)
+
+        app_logger.info("Executing silence command on user %s for %s. Reason: %s", user, duration, reason)
+        await user.timeout(duration, reason=reason)
+        await message.channel.send(f"SYSTEM: Silenced user {user} for {duration}")
+
+def parse_duration(duration: str) -> timedelta:
+    match duration[-1]:
+        case "m":
+            return timedelta(minutes=int(duration[:-1]))
+        case "h":
+            return timedelta(hours=int(duration[:-1]))
+        case _:
+            raise ValueError(f"Invalid duration: {duration}")
+        
 
 discord_token = os.getenv("DISCORD_BOT_TOKEN")
 client.run(discord_token, log_handler=None)

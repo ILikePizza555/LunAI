@@ -1,5 +1,6 @@
 import discord
 import os
+import openai
 import logging
 
 # Setup logging
@@ -17,10 +18,13 @@ stderr_handler.setFormatter(logging.Formatter(
 ))
 logging.getLogger().addHandler(stderr_handler)
 
+# Create Discord client
 intents = discord.Intents.default()
 intents.message_content = True
-
 client = discord.Client(intents=intents)
+
+# Create OpenAI client
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @client.event
 async def on_ready():
@@ -38,12 +42,9 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
+    if message.content.startswith('$ping'):
+        await message.channel.send('Pong!')
+        return
 
-
-DISCORD_TOKEN_ENVAR = "DISCORD_BOT_TOKEN"
-
-if __name__ == "__main__":
-    discord_token = os.getenv(DISCORD_TOKEN_ENVAR)
-    client.run(discord_token, log_handler=None)
+discord_token = os.getenv("DISCORD_BOT_TOKEN")
+client.run(discord_token, log_handler=None)

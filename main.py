@@ -164,7 +164,7 @@ async def process_self_commands(message: discord.Message):
         await message.channel.send(f"SYSTEM: Silenced user {user} for {duration}")
     
     if clearcache_match is not None:
-        command_clear_cache(message.channel)
+        await command_clear_cache(message.channel)
 
 async def command_clear_cache(channel: discord.TextChannel):
     app_logger.info("Clearing message history for channel %s. (Current length: %d)", channel, len(channel_history[channel]))

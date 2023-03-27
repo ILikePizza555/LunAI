@@ -95,6 +95,11 @@ def get_openai_message_from_history(channel: discord.TextChannel):
     
     return rv
 
+privilaged_ids = [
+    122222174554685443,
+    95585199324143616
+]
+
 @client.event
 async def on_ready():
     permissions = discord.Permissions()
@@ -115,6 +120,13 @@ async def on_message(message: discord.Message):
     if message.content.startswith('$ping'):
         await message.channel.send('Pong!')
         return
+    
+    if message.content.startswith('$clearcache'):
+        if message.author.id in privilaged_ids:
+            await command_clear_cache(message.channel)
+            return
+        else:
+            app_logger.info("Unprivilaged user %d (%s) attempted to clear the channel cache.", message.author.id, message.author)
 
     async with message.channel.typing():
         put_user_message(message)
@@ -152,10 +164,13 @@ async def process_self_commands(message: discord.Message):
         await message.channel.send(f"SYSTEM: Silenced user {user} for {duration}")
     
     if clearcache_match is not None:
-        app_logger.info("Clearing message history for channel %s. (Current length: %d)", message.channel, len(channel_history[message.channel]))
+        command_clear_cache(message.channel)
 
-        channel_history[message.channel].clear()
-        await message.channel.send(f"SYSTEM: Cleared message cache for channel.")
+async def command_clear_cache(channel: discord.TextChannel):
+    app_logger.info("Clearing message history for channel %s. (Current length: %d)", channel, len(channel_history[channel]))
+    channel_history[channel].clear()
+    await channel.send(f"SYSTEM: Cleared message cache for channel.")
+
 
 def parse_duration(duration: str) -> timedelta:
     match duration[-1]:
@@ -165,7 +180,6 @@ def parse_duration(duration: str) -> timedelta:
             return timedelta(hours=int(duration[:-1]))
         case _:
             raise ValueError(f"Invalid duration: {duration}")
-        
 
 discord_token = os.getenv("DISCORD_BOT_TOKEN")
 client.run(discord_token, log_handler=None)

@@ -9,7 +9,7 @@ from datetime import timedelta
 DISCORD_CLIENT_ID = 1089633150516338868
 OPENAI_ENGINE = "gpt-3.5-turbo"
 PROMPT = """
-You are LunAI a.k.a Luna, a moderation chatbot for Discord servers. 
+You are LunAI a.k.a Luna. You are a Discord user and moderator.
 You engage in conversations, while ensuring that users behave appropriately.
 Unless you are moderating a user, professionalism is unnecessary. 
 

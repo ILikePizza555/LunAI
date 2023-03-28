@@ -26,6 +26,17 @@
                     p.aiohttp
                 ];
             })
+            (buildPythonPackage rec {
+                pname = "tiktoken";
+                version = "0.3.2";
+                src = fetchPypi {
+                    inherit pname version;
+                    sha256 = "";
+                };
+                doCheck = false;
+                propagatedBuildInputs = [
+                ];
+            })
         ];
         python-with-packages = pkgs.python310.withPackages python-packages;
     in

@@ -110,39 +110,43 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
-    if message.author == client.user:
-        await process_self_commands(message)
-        return
-
-    if message.content.startswith('$ping'):
-        await message.channel.send('Pong!')
-        return
-    
-    if message.content.startswith('$clearcache'):
-        if message.author.id in privilaged_ids:
-            await command_clear_cache(message.channel)
+    try:
+        if message.author == client.user:
+            await process_self_commands(message)
             return
-        else:
-            app_logger.info("Unprivilaged user %d (%s) attempted to clear the channel cache.", message.author.id, message.author)
 
-    async with message.channel.typing():
-        put_user_message(message)
+        if message.content.startswith('$ping'):
+            await message.channel.send('Pong!')
+            return
+        
+        if message.content.startswith('$clearcache'):
+            if message.author.id in privilaged_ids:
+                await command_clear_cache(message.channel)
+                return
+            else:
+                app_logger.info("Unprivilaged user %d (%s) attempted to clear the channel cache.", message.author.id, message.author)
 
-        chat_resp = await openai.ChatCompletion.acreate(
-            model=OPENAI_ENGINE,
-            messages = get_openai_message_from_history(message.channel)
+        async with message.channel.typing():
+            put_user_message(message)
+
+            chat_resp = await openai.ChatCompletion.acreate(
+                model=OPENAI_ENGINE,
+                messages = get_openai_message_from_history(message.channel)
+            )
+        
+        app_logger.info(
+            "OpenAI usage - Prompt tokens: %d, Completion tokens: %d, Total tokens: %d",
+            chat_resp["usage"]["prompt_tokens"],
+            chat_resp["usage"]["completion_tokens"],
+            chat_resp["usage"]["total_tokens"]
         )
-    
-    app_logger.info(
-        "OpenAI usage - Prompt tokens: %d, Completion tokens: %d, Total tokens: %d",
-        chat_resp["usage"]["prompt_tokens"],
-        chat_resp["usage"]["completion_tokens"],
-        chat_resp["usage"]["total_tokens"]
-    )
 
-    await message.channel.send(
-        put_assistant_message(message.channel, chat_resp['choices'][0]['message']['content'])
-    )
+        await message.channel.send(
+            put_assistant_message(message.channel, chat_resp['choices'][0]['message']['content'])
+        )
+    except openai.error.RateLimitError as e:
+        await message.channel.send("SYSTEM: OpenAI API Error - Rate Limit")
+        app_logger.warning("Got rate limited by OpenAI. Message: %s", e)
 
 CLEAR_CACHE = re.compile(r"^\$CLEARCACHE", re.MULTILINE)
 SILENCE_REGEX = re.compile(r"^\$SILENCE @<\d+> (\d+[mh]) (.*)", re.MULTILINE)

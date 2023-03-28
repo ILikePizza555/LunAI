@@ -5,6 +5,7 @@ import logging
 import re
 from collections import deque
 from datetime import timedelta
+from openai.error import RateLimitError
 
 DISCORD_CLIENT_ID = 1089633150516338868
 OPENAI_ENGINE = "gpt-3.5-turbo"
@@ -144,7 +145,7 @@ async def on_message(message: discord.Message):
         await message.channel.send(
             put_assistant_message(message.channel, chat_resp['choices'][0]['message']['content'])
         )
-    except openai.error.RateLimitError as e:
+    except RateLimitError as e:
         await message.channel.send("SYSTEM: OpenAI API Error - Rate Limit")
         app_logger.warning("Got rate limited by OpenAI. Message: %s", e)
 

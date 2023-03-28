@@ -70,7 +70,7 @@ def put_user_message(message: discord.Message):
         channel_history[message.channel] = deque(maxlen=256)
     
     channel_history_queue = channel_history[message.channel]
-    user_message = f"{message.author.name} {message.author.id}: {message.content}"
+    user_message = f"{message.author.name} [{message.author.id}]: {message.content}"
     channel_history_queue.append({"role": "user", "content": user_message})
 
     app_logger.debug("New user message in channel %d: \"%s\"", message.channel.id, user_message)

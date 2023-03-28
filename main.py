@@ -150,7 +150,7 @@ async def on_message(message: discord.Message):
         app_logger.warning("Got rate limited by OpenAI. Message: %s", e)
 
 CLEAR_CACHE = re.compile(r"^\$CLEARCACHE", re.MULTILINE)
-SILENCE_REGEX = re.compile(r"^\$SILENCE @<\d+> (\d+[mh]) (.*)", re.MULTILINE)
+SILENCE_REGEX = re.compile(r"^\$SILENCE <@\d+> (\d+[mh]) (.*)", re.MULTILINE)
 
 async def process_self_commands(message: discord.Message):
     silence_match = SILENCE_REGEX.search(message.content)

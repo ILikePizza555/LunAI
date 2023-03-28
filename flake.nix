@@ -31,10 +31,17 @@
                 version = "0.3.2";
                 src = fetchPypi {
                     inherit pname version;
-                    sha256 = "";
+                    sha256 = "sha256-pRtUSeiD5AnPL0qEamqXli1WVqNUpVMsMwgRyDOsOzc=";
                 };
                 doCheck = false;
+                nativeBuildInputs = [
+                    pkgs.cargo
+                    pkgs.rustc
+                ];
                 propagatedBuildInputs = [
+                    p.setuptools-rust
+                    p.requests
+                    p.regex
                 ];
             })
         ];

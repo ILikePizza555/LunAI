@@ -145,7 +145,8 @@ async def on_message(message: discord.Message):
         )
 
         await message.channel.send(
-            put_assistant_message(message.channel, chat_resp['choices'][0]['message']['content'])
+            put_assistant_message(message.channel, chat_resp['choices'][0]['message']['content']),
+            allowed_mentions= discord.AllowedMentions(users=True, roles=True) #TODO: limit to only necessary users and moderator role
         )
     except RateLimitError as e:
         await message.channel.send("SYSTEM: OpenAI API Error - Rate Limit")

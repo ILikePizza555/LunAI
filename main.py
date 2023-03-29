@@ -134,7 +134,8 @@ async def on_message(message: discord.Message):
 
             chat_resp = await openai.ChatCompletion.acreate(
                 model=OPENAI_ENGINE,
-                messages = get_openai_message_from_history(message.channel)
+                messages = get_openai_message_from_history(message.channel),
+                temperature = 0.7
             )
         
         app_logger.info(

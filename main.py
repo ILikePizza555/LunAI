@@ -5,7 +5,7 @@ import logging
 import re
 from collections import deque
 from datetime import timedelta
-from openai.error import RateLimitError
+from openai.error import RateLimitError, APIConnectionError
 
 DISCORD_CLIENT_ID = 1089633150516338868
 OPENAI_ENGINE = "gpt-3.5-turbo"
@@ -152,6 +152,9 @@ async def on_message(message: discord.Message):
     except RateLimitError as e:
         await message.channel.send("SYSTEM: OpenAI API Error - Rate Limit")
         app_logger.warning("Got rate limited by OpenAI. Message: %s", e)
+    except APIConnectionError as e:
+        await message.channel.send("SYSTEM: OpenAI Connection Error")
+        app_logger.error("Connection error: %s", e)
 
 CLEAR_CACHE = re.compile(r"^\$CLEARCACHE", re.MULTILINE)
 SILENCE_REGEX = re.compile(r"^\$SILENCE <@\d+> (\d+[mh]) (.*)", re.MULTILINE)

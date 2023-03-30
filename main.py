@@ -3,7 +3,9 @@ import discord
 import os
 import openai
 import logging
+import logging.config
 import re
+import rtoml
 from collections import defaultdict
 from datetime import timedelta
 from openai.error import RateLimitError, APIConnectionError
@@ -45,20 +47,8 @@ Human server moderators: Queen Izzy [122222174554685443], Erik McClure [95585199
 """
 
 # Setup logging
+logging.config.dictConfig(rtoml.load(open("logging.toml")))
 app_logger = logging.getLogger("lunai")
-app_logger.setLevel(logging.DEBUG)
-
-discord_logger = logging.getLogger("discord")
-discord_logger.setLevel(logging.INFO)
-
-# Create a stream handler, set it's format and add it the root logger
-stderr_handler = logging.StreamHandler()
-stderr_handler.setFormatter(logging.Formatter(
-    "[{asctime}] [{levelname:<8}] {name}: {message}",
-    datefmt = "%Y-%m-%d %H:%M:%S",
-    style = "{"
-))
-logging.getLogger().addHandler(stderr_handler)
 
 # Create Discord client
 intents = discord.Intents.default()

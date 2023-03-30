@@ -1,0 +1,21 @@
+# See https://docs.python.org/3.10/library/logging.config.html#configuration-dictionary-schema for all options
+
+version = 1
+
+[formatters.default]
+format = "[{asctime}] [{levelname:<8}] {name}: {message}"
+datefmt = "%Y-%m-%d %H:%M:%S"
+style = "{"
+
+[handlers.console]
+class = "logging.StreamHandler"
+formatter = "default"
+
+[loggers.discord]
+level = "INFO"
+
+[loggers.lunai]
+level = "DEBUG"
+
+[root]
+handlers = ["console"]

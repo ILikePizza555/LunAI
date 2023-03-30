@@ -111,9 +111,12 @@ async def on_message(message: discord.Message):
                 f"{message.author.name} [{message.author.id}]: {message.content}"
             )
 
+            messages = [{"role": ai.MessageRole.SYSTEM.value, "content": PROMPT}]
+            messages.extend(m.api_serialize() for m in context_window.message_iterator)
+
             api_response = await openai.ChatCompletion.acreate(
                 model=OPENAI_ENGINE,
-                messages = [PROMPT].extend(m.api_serialize() for m in context_window.message_iterator),
+                messages = messages,
                 temperature = 0.7
             )
             response_content = api_response['choices'][0]['message']['content']

@@ -1,8 +1,8 @@
 from enum import Enum
+from collections import deque
 from dataclasses import dataclass, field
 from tiktoken import get_encoding, Encoding
 from typing import Union
-import heapq
 
 class MessageRole(Enum):
     SYSTEM = "system"
@@ -35,14 +35,11 @@ def calculate_message_tokens(message: Message, encoding: Union[str, Encoding] = 
     return len(encoding.encode(message.content))
 
 
-# TODO: There is a "bug" here. "Pinning" is intended to be done by setting the priority of items.
-#       If there are more "pinned" tokens than max_tokens then `drain_tokens`` will remove "pinned" messages.
-#       This really shouldn't come up in practice though. And `max_tokens` shouldn't be made smaller than the prompt.
 class ModelContextWindow:
     """Manages messages to form a context window that can be passed to the model."""
 
     def __init__(self, max_tokens: int, encoding: Union[str, Encoding] = "cl100k_base"):
-        self._queue: list[Message] = []
+        self._queue = deque()
         self._token_count = 0
         self.encoding = encoding
         self.max_tokens = max_tokens
@@ -50,7 +47,7 @@ class ModelContextWindow:
     @property
     def message_iterator(self):
         """Returns an iterator of messages in order."""
-        return sorted(self._queue)
+        return iter(self._queue)
     
     @property
     def token_count(self) -> int:
@@ -61,11 +58,11 @@ class ModelContextWindow:
         rv = []
 
         while self._token_count > self.max_tokens:
-            smol = heapq.heappop(self._queue)
-            smol_token_count = calculate_message_tokens(smol, self.encoding)
+            m = self._queue.popleft()
+            m_tokens = calculate_message_tokens(m, self.encoding)
             
-            self._token_count -= smol_token_count
-            rv.append(smol)
+            self._token_count -= m_tokens
+            rv.append(m_tokens)
         
         return rv
     
@@ -74,7 +71,7 @@ class ModelContextWindow:
         token_count = calculate_message_tokens(message, self.encoding)
         self._token_count += token_count
 
-        heapq.heappush(self._queue, message)
+        self._queue.append(message)
         return self.drain_tokens()
     
     def insert_new_message(self, role: MessageRole, content: str, priority = 0, index = None) -> list[Message]:

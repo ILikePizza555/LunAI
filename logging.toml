@@ -17,7 +17,7 @@ class = "logging.StreamHandler"
 formatter = "default"
 
 [handlers.chat-csv]
-class = "logging.RotatingFileHandler"
+class = "logging.handlers.RotatingFileHandler"
 formatter = "csv"
 filename = "lunai_chat.log"
 backupCount = 1

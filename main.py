@@ -124,7 +124,7 @@ async def on_message(message: discord.Message):
         )
         timings_end = time.perf_counter_ns()
         
-        stats_chat_logger.info(f"{correlation_id},ASSISTANT,{message.channel.id},{response.content}")
+        stats_chat_logger.info(f"{correlation_id},ASSISTANT,{message.channel.id},{response.content!r}")
         stats_logger.info(f"[{correlation_id}] Channel {message.channel.id} context token count: {ai.context_windows[message.channel].token_count}")
 
         timing_on_message = timings_end - timing_message_start 

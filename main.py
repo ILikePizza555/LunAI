@@ -1,4 +1,3 @@
-import ai
 import discord
 import os
 import openai
@@ -6,7 +5,8 @@ import logging
 import logging.config
 import re
 import rtoml
-from collections import defaultdict
+import time
+from ai import Foxtail, ChatCompletionAPI, MessageRole
 from datetime import timedelta
 from openai.error import RateLimitError, APIConnectionError
 
@@ -49,6 +49,8 @@ Human server moderators: Queen Izzy [122222174554685443], Erik McClure [95585199
 # Setup logging
 logging.config.dictConfig(rtoml.load(open("logging.toml")))
 app_logger = logging.getLogger("lunai")
+stats_logger = logging.getLogger("stats")
+stats_chat_logger = logging.getLogger("stats.chat")
 
 # Create Discord client
 intents = discord.Intents.default()
@@ -58,7 +60,7 @@ client = discord.Client(intents=intents)
 # Create OpenAI client
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-context_windows = defaultdict(lambda: ai.ModelContextWindow(2500))
+ai = Foxtail(PROMPT, ChatCompletionAPI(model=OPENAI_ENGINE, temperature=0.7))
 
 privilaged_ids = [
     122222174554685443,
@@ -78,6 +80,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
+    timing_message_start = time.perf_counter_ns()
     try:
         if message.author == client.user:
             await process_self_commands(message)
@@ -94,39 +97,36 @@ async def on_message(message: discord.Message):
             else:
                 app_logger.info("Unprivilaged user %d (%s) attempted to clear the channel cache.", message.author.id, message.author)
 
-        context_window = context_windows[message.channel]
-
         async with message.channel.typing():
-            context_window.insert_new_message(
-                ai.MessageRole.USER,
-                f"{message.author.name} [{message.author.id}]: {message.content}"
-            )
-
-            messages = [{"role": ai.MessageRole.SYSTEM.value, "content": PROMPT}]
-            messages.extend(m.api_serialize() for m in context_window.message_iterator)
-
-            api_response = await openai.ChatCompletion.acreate(
-                model=OPENAI_ENGINE,
-                messages = messages,
-                temperature = 0.7
-            )
-            response_content = api_response['choices'][0]['message']['content']
+            timing_openai_start = time.perf_counter_ns()
+            response = await ai.add_and_send_new_message(
+                message.channel,
+                MessageRole.USER,
+                f"{message.author.name} [{message.author.id}]: {message.content}")
+            timing_openai_end = time.perf_counter_ns()
         
-        app_logger.info(
+        stats_logger.info(
             "OpenAI usage - Prompt tokens: %d, Completion tokens: %d, Total tokens: %d",
-            api_response["usage"]["prompt_tokens"],
-            api_response["usage"]["completion_tokens"],
-            api_response["usage"]["total_tokens"]
+            response.statistics["prompt_tokens"],
+            response.statistics["completion_tokens"],
+            response.statistics["total_tokens"]
         )
 
-        context_window.insert_new_message(ai.MessageRole.ASSISTANT, response_content)
+        timing_discord_start = time.perf_counter_ns()
         #TODO: limit to only necessary users and moderator role
         await message.channel.send(
-            response_content,
+            response.content,
             allowed_mentions = discord.AllowedMentions(users=True, roles=True) 
         )
+        timings_end = time.perf_counter_ns()
 
-        app_logger.info("Channel %d context token count: %d", message.channel.id, context_window.token_count)
+        encoded_user_message = message.content.encode("string_escape")
+        stats_chat_logger.info(f"USER,{message.author.name},{message.author.id},\"{encoded_user_message}\"")
+        stats_chat_logger.info(f"ASSISTANT,{response.content}")
+        stats_logger.info("Channel %d context token count: %d", 
+                          message.channel.id,
+                          ai.context_windows[message.channel].token_count)
+        stats_logger.info(f"Timings - on_message: {timings_end - timing_message_start}ns, open_ai: {timing_openai_end - timing_openai_start}ns, discord: {timings_end - timing_discord_start}ns")
     except RateLimitError as e:
         await message.channel.send("SYSTEM: OpenAI API Error - Rate Limit")
         app_logger.warning("Got rate limited by OpenAI. Message: %s", e)
@@ -154,9 +154,8 @@ async def process_self_commands(message: discord.Message):
         await command_clear_cache(message.channel)
 
 async def command_clear_cache(channel: discord.TextChannel):
-    cw = context_windows[channel]
+    ai.clear_channel_context(channel)
     app_logger.info("Clearing message history for channel %s.", channel)
-    cw.clear()
     await channel.send(f"SYSTEM: Cleared message cache for channel.")
 
 def parse_duration(duration: str) -> timedelta:

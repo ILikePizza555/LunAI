@@ -54,6 +54,10 @@ class ModelContextWindow:
         """Returns an iterator of messages in order."""
         return sorted(self._queue)
     
+    @property
+    def token_count(self) -> int:
+        return self._token_count
+    
     def drain_tokens(self):
         """Pops items from the window until the token count is under max_tokens"""
         rv = []

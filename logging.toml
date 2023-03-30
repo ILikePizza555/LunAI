@@ -7,15 +7,33 @@ format = "[{asctime}] [{levelname:<8}] {name}: {message}"
 datefmt = "%Y-%m-%d %H:%M:%S"
 style = "{"
 
+[formatters.csv]
+format = "{asctime},{message}"
+datefmt = "%Y-%m-%d %H:%M:%S"
+style = "{"
+
 [handlers.console]
 class = "logging.StreamHandler"
 formatter = "default"
+
+[handlers.chat-csv]
+class = "logging.RotatingFileHandler"
+formatter = "csv"
+filename = "lunai_chat.log"
+backupCount = 1
 
 [loggers.discord]
 level = "INFO"
 
 [loggers.lunai]
 level = "DEBUG"
+
+[loggers.stats]
+level = "INFO"
+
+[logers.stats.chat]
+level = "INFO"
+handlers = ["chat-csv"]
 
 [root]
 handlers = ["console"]

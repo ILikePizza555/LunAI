@@ -135,7 +135,7 @@ async def on_message(message: discord.Message):
             allowed_mentions = discord.AllowedMentions(users=True, roles=True) 
         )
 
-        app_logger.info("Channel %d context token count: %d", message.channel, context_window.token_count)
+        app_logger.info("Channel %d context token count: %d", message.channel.id, context_window.token_count)
     except RateLimitError as e:
         await message.channel.send("SYSTEM: OpenAI API Error - Rate Limit")
         app_logger.warning("Got rate limited by OpenAI. Message: %s", e)

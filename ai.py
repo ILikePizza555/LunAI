@@ -69,6 +69,9 @@ class ModelContextWindow:
     
     def insert_message(self, message: Message) -> list[Message]:
         """Inserts a message into the window. Automatically calls drain_tokens"""
+        token_count = calculate_message_tokens(message)
+        self._token_count += token_count
+
         heapq.heappush(self._queue, message)
         return self.drain_tokens()
     

@@ -101,8 +101,7 @@ async def on_message(message: discord.Message):
                 app_logger.info(f"[{correlation_id}] Unprivilaged user {message.author.id} ({message.author}) attempted to clear the channel cache.")
 
         # Logging the user message
-        encoded_user_message = message.content.encode("string_escape")
-        stats_chat_logger.info(f"{correlation_id},USER,{message.channel.id},{message.author.name},{message.author.id},\"{encoded_user_message}\"")
+        stats_chat_logger.info(f"{correlation_id},USER,{message.channel.id},{message.author.name},{message.author.id},{message.content!r}")
 
         async with message.channel.typing():
             timing_openai_start = time.perf_counter_ns()
@@ -128,10 +127,10 @@ async def on_message(message: discord.Message):
         stats_chat_logger.info(f"{correlation_id},ASSISTANT,{message.channel.id},{response.content}")
         stats_logger.info(f"[{correlation_id}] Channel {message.channel.id} context token count: {ai.context_windows[message.channel].token_count}")
 
-        timing_on_message = timings_end - timing_message_start
+        timing_on_message = timings_end - timing_message_start 
         timing_openai = timing_openai_end - timing_openai_start
         timing_discord = timings_end - timing_discord_start
-        stats_logger.info(f"[{correlation_id}] Timings - {timing_on_message=}ns, {timing_openai}ns, {timing_discord}ns")
+        stats_logger.info(f"[{correlation_id}] Timings - {timing_on_message=}ns, {timing_openai=}ns, {timing_discord=}ns")
     except RateLimitError as e:
         await message.channel.send("SYSTEM: OpenAI API Error - Rate Limit")
         app_logger.warning(f"[{correlation_id}] Got rate limited by OpenAI. Message: {e}")

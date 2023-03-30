@@ -20,7 +20,7 @@ formatter = "default"
 class = "logging.handlers.RotatingFileHandler"
 formatter = "csv"
 filename = "lunai_chat.log"
-backupCount = 1
+maxBytes = 10000000
 
 [loggers.discord]
 level = "INFO"
@@ -31,7 +31,7 @@ level = "DEBUG"
 [loggers.stats]
 level = "INFO"
 
-[logers.stats.chat]
+[loggers.stats.chat]
 level = "INFO"
 handlers = ["chat-csv"]
 

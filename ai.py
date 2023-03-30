@@ -1,6 +1,7 @@
 from enum import Enum
 from collections import deque
 from dataclasses import dataclass, field
+from functools import lru_cache
 from tiktoken import get_encoding, Encoding
 from typing import Union
 
@@ -9,7 +10,9 @@ class MessageRole(Enum):
     USER = "user"
     ASSISTANT = "assistant"
 
-@dataclass(order=True)
+# dataclass will only generate hash if both eq and frozen are true
+# Message is "logically" frozen. So we set unsafe_hash here to force the generation of __hash__()
+@dataclass(order=True, unsafe_hash=True)
 class Message:
     """Dataclass to store metadata and content for messages between us and the chat completion model"""
     # The priority of the message
@@ -27,7 +30,8 @@ class Message:
             "role": self.role.value,
             "content": self.content
         }
-
+    
+@lru_cache
 def calculate_message_tokens(message: Message, encoding: Union[str, Encoding] = "cl100k_base") -> int:
     if type(encoding) is str:
         encoding = get_encoding(encoding)

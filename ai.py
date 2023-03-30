@@ -76,8 +76,10 @@ class ModelContextWindow:
         """Creates a new `Message` and inserts it into the window."""
         return self.insert_message(Message(
             priority,
-            # The heapq module is a min heap so we have to negate the index. TODO: document this somewhere
-            -len(self._queue) if index is not None else index,
+            len(self._queue) if index is not None else index,
             role,
             content
         ))
+    
+    def clear(self):
+        self._queue.clear()

@@ -3,7 +3,8 @@ import os
 import openai
 import logging
 import re
-from collections import deque
+from .ai import ModelContextWindow, MessageRole
+from collections import defaultdict
 from datetime import timedelta
 from openai.error import RateLimitError, APIConnectionError
 
@@ -66,34 +67,7 @@ client = discord.Client(intents=intents)
 # Create OpenAI client
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-channel_history = {}
-
-def put_user_message(message: discord.Message): 
-    if message.channel not in channel_history:
-        channel_history[message.channel] = deque(maxlen=256)
-    
-    channel_history_queue = channel_history[message.channel]
-    user_message = f"{message.author.name} [{message.author.id}]: {message.content}"
-    channel_history_queue.append({"role": "user", "content": user_message})
-
-    app_logger.debug("New user message in channel %d: \"%s\"", message.channel.id, user_message)
-    app_logger.debug("Length of history for channel %d: %d", message.channel.id, len(channel_history_queue))
-
-def put_assistant_message(channel: discord.TextChannel, message_content: str) -> str:
-    if channel not in channel_history:
-        app_logger.warn("Got assistant message for a channel that has no history!")
-        channel_history[channel] = deque(maxlen=256)
-    
-    channel_history[channel].append({"role": "assistant", "content": message_content})
-    return message_content
-
-def get_openai_message_from_history(channel: discord.TextChannel):
-    rv = [{"role": "system", "content": PROMPT}]
-    
-    if channel in channel_history:
-        rv.extend(channel_history[channel])
-    
-    return rv
+context_windows = defaultdict(lambda: ModelContextWindow(2500))
 
 privilaged_ids = [
     122222174554685443,
@@ -129,25 +103,33 @@ async def on_message(message: discord.Message):
             else:
                 app_logger.info("Unprivilaged user %d (%s) attempted to clear the channel cache.", message.author.id, message.author)
 
-        async with message.channel.typing():
-            put_user_message(message)
+        context_window = context_windows[message.channel]
 
-            chat_resp = await openai.ChatCompletion.acreate(
+        async with message.channel.typing():
+            context_window.insert_new_message(
+                MessageRole.USER,
+                f"{message.author.name} [{message.author.id}]: {message.content}"
+            )
+
+            api_response = await openai.ChatCompletion.acreate(
                 model=OPENAI_ENGINE,
-                messages = get_openai_message_from_history(message.channel),
+                messages = [PROMPT].extend(m.api_serialize() for m in context_window.message_iterator),
                 temperature = 0.7
             )
+            response_content = api_response['choices'][0]['message']['content']
         
         app_logger.info(
             "OpenAI usage - Prompt tokens: %d, Completion tokens: %d, Total tokens: %d",
-            chat_resp["usage"]["prompt_tokens"],
-            chat_resp["usage"]["completion_tokens"],
-            chat_resp["usage"]["total_tokens"]
+            api_response["usage"]["prompt_tokens"],
+            api_response["usage"]["completion_tokens"],
+            api_response["usage"]["total_tokens"]
         )
 
+        context_window.insert_new_message(MessageRole.ASSISTANT, response_content)
+        #TODO: limit to only necessary users and moderator role
         await message.channel.send(
-            put_assistant_message(message.channel, chat_resp['choices'][0]['message']['content']),
-            allowed_mentions= discord.AllowedMentions(users=True, roles=True) #TODO: limit to only necessary users and moderator role
+            response_content,
+            allowed_mentions = discord.AllowedMentions(users=True, roles=True) 
         )
     except RateLimitError as e:
         await message.channel.send("SYSTEM: OpenAI API Error - Rate Limit")
@@ -176,10 +158,10 @@ async def process_self_commands(message: discord.Message):
         await command_clear_cache(message.channel)
 
 async def command_clear_cache(channel: discord.TextChannel):
-    app_logger.info("Clearing message history for channel %s. (Current length: %d)", channel, len(channel_history[channel]))
-    channel_history[channel].clear()
+    cw = context_windows[channel]
+    app_logger.info("Clearing message history for channel %s. (Current length: %d)", channel, len(cw))
+    cw.clear()
     await channel.send(f"SYSTEM: Cleared message cache for channel.")
-
 
 def parse_duration(duration: str) -> timedelta:
     match duration[-1]:

@@ -1,9 +1,9 @@
+import ai
 import discord
 import os
 import openai
 import logging
 import re
-from .ai import ModelContextWindow, MessageRole
 from collections import defaultdict
 from datetime import timedelta
 from openai.error import RateLimitError, APIConnectionError
@@ -67,7 +67,7 @@ client = discord.Client(intents=intents)
 # Create OpenAI client
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-context_windows = defaultdict(lambda: ModelContextWindow(2500))
+context_windows = defaultdict(lambda: ai.ModelContextWindow(2500))
 
 privilaged_ids = [
     122222174554685443,
@@ -107,7 +107,7 @@ async def on_message(message: discord.Message):
 
         async with message.channel.typing():
             context_window.insert_new_message(
-                MessageRole.USER,
+                ai.MessageRole.USER,
                 f"{message.author.name} [{message.author.id}]: {message.content}"
             )
 
@@ -125,7 +125,7 @@ async def on_message(message: discord.Message):
             api_response["usage"]["total_tokens"]
         )
 
-        context_window.insert_new_message(MessageRole.ASSISTANT, response_content)
+        context_window.insert_new_message(ai.MessageRole.ASSISTANT, response_content)
         #TODO: limit to only necessary users and moderator role
         await message.channel.send(
             response_content,

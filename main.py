@@ -164,7 +164,7 @@ async def process_self_commands(message: discord.Message):
 
 async def command_clear_cache(channel: discord.TextChannel):
     cw = context_windows[channel]
-    app_logger.info("Clearing message history for channel %s. (Current length: %d)", channel, len(cw))
+    app_logger.info("Clearing message history for channel %s.", channel)
     cw.clear()
     await channel.send(f"SYSTEM: Cleared message cache for channel.")
 

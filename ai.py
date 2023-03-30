@@ -10,7 +10,9 @@ class MessageRole(Enum):
     USER = "user"
     ASSISTANT = "assistant"
 
-@dataclass(order=True)
+# dataclass will only generate hash if both eq and frozen are true
+# Message is "logically" frozen. So we set unsafe_hash here to force the generation of __hash__()
+@dataclass(order=True, unsafe_hash=True)
 class Message:
     """Dataclass to store metadata and content for messages between us and the chat completion model"""
     # The priority of the message
@@ -73,7 +75,7 @@ class ModelContextWindow:
     
     def insert_message(self, message: Message) -> list[Message]:
         """Inserts a message into the window. Automatically calls drain_tokens"""
-        token_count = calculate_message_tokens(message)
+        token_count = calculate_message_tokens(message, self.encoding)
         self._token_count += token_count
 
         heapq.heappush(self._queue, message)

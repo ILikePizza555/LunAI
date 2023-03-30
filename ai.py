@@ -1,8 +1,11 @@
+from collections import deque, defaultdict
+from dataclasses import dataclass, field
+from discord import TextChannel
 from enum import Enum
-from collections import deque
-from dataclasses import dataclass, field, InitVar
 from functools import lru_cache
+from openai import ChatCompletion
 from tiktoken import get_encoding, Encoding
+from typing import NamedTuple, Iterable
 
 class MessageRole(Enum):
     SYSTEM = "system"
@@ -37,14 +40,18 @@ class Message:
         return len(encoding.encode(message.content))
 
 
-class ModelContextWindow:
+class ContextWindow:
     """Manages messages to form a context window that can be passed to the model."""
 
     def __init__(self, max_tokens: int, encoding: str | Encoding = "cl100k_base"):
-        self._queue = deque()
+        self._queue: deque[Message] = deque()
         self._token_count = 0
         self.encoding = encoding
         self.max_tokens = max_tokens
+
+    @property
+    def empty(self) -> bool:
+        return len(self._queue) == 0
 
     @property
     def message_iterator(self):
@@ -87,3 +94,92 @@ class ModelContextWindow:
     
     def clear(self):
         self._queue.clear()
+
+
+class CompletionRespose(NamedTuple):
+    """A standard type for responses from models"""
+    content: str
+    statistics: dict[str, int]
+
+
+class ChatCompletionAPI:
+    """Defines a standard interface for the OpenAI ChatCompletion API"""
+
+    def __init__(self, **kwargs) -> None:
+        self.api_args = kwargs
+    
+    async def get_completion(self, messages: Iterable[Message]) -> CompletionRespose:
+        response = await ChatCompletion.acreate(
+            **self.api_args,
+            messages = [m.api_serialize() for m in messages]
+        )
+
+        return CompletionRespose(
+            response["choices"][0]["message"]["content"],
+            response["usage"]
+        )
+
+
+class Foxtail:
+    """
+    An instance of the abstract idea of an "intelligence" or connection to a model.
+
+    In practice this class just holds the prompt and context windows for a model, and defines
+    and API to simplify communicating across the API. Of course, there being an API in the first
+    places is merely an implementation detail.
+
+    I chose the name Foxtail because I spent like an hour trying to come up with a name and
+    I just settled for the first thing I saw which was a scarf with a fox on it.
+    """
+    def __init__(self, prompt: str, api, context_window_size = 2500) -> None:
+        # TODO: Prompt should be stored in the context window but this functionality doesn't exist yet
+        self.prompt = Message(0, 0, MessageRole.SYSTEM, prompt)
+        self._api = api
+        self._channel_context_windows = defaultdict(lambda: ContextWindow(context_window_size))
+    
+    @property
+    def context_windows(self) -> defaultdict[TextChannel, ContextWindow]:
+        return self._channel_context_windows
+
+    def clear_channel_context(self, channel: TextChannel):
+        self._channel_context_windows[channel].clear()
+
+    async def send_window(self, channel: TextChannel, add_response = True) -> CompletionRespose:
+        """
+        Sends the window to the api for a resonse and returns it.
+        If `add_response` is True (default) then the response is added to the context window.
+        If the window is empty or does not exist then an error is raised.
+        """
+        if channel not in self._channel_context_windows:
+            raise LookupError(f"No context window for channel {channel.id} exists.")
+
+        context_window = self._channel_context_windows[channel]
+
+        if context_window.empty:
+            raise ValueError(f"Channel {channel.id}'s context window is empty.")
+        
+        messages = [self.prompt]
+        messages.extend(context_window.message_iterator)
+
+        response: CompletionRespose = await self._api.get_completion(messages)
+
+        if add_response:
+            response_message = Message(0, 0, MessageRole.ASSISTANT, response.content)
+            context_window.insert_message(response_message)
+        
+        return response
+    
+    async def add_and_send_new_message(self, 
+                                 channel: TextChannel,
+                                 role: MessageRole, 
+                                 content: str,
+                                 priority = 0,
+                                 index = None,
+                                 add_response = True) -> CompletionRespose:
+        """
+        Creates a new user message and adds it to the context window. 
+        Then, sends that context window to the api and returns the response.
+        """
+        context_window = self._channel_context_windows[channel]
+        context_window.insert_new_message(role, content, priority, index)
+        return await self.send_window(channel, add_response)

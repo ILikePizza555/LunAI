@@ -31,9 +31,10 @@ level = "DEBUG"
 [loggers.stats]
 level = "INFO"
 
-[loggers.stats.chat]
+[loggers."stats.chat"]
 level = "INFO"
 handlers = ["chat-csv"]
+propagate = 0
 
 [root]
 handlers = ["console"]

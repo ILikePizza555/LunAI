@@ -10,6 +10,8 @@
         pkgs = import nixpkgs { inherit system; };
         python-packages = p: with p; [
             discordpy
+            rtoml
+            pytest
             (buildPythonPackage rec {
                 pname = "openai";
                 version = "0.27.2";

@@ -56,9 +56,14 @@ class ContextWindow:
         return len(self._queue) == 0
 
     @property
-    def message_iterator(self):
-        """Returns an iterator of messages in order."""
-        return sorted(self._queue)
+    def messages(self):
+        """Returns an iterator of messages in lowest priority, lowest index order."""
+        return iter(self._queue)
+    
+    @property
+    def chat_order(self):
+        """Returns messages in highest priority, lowest index order."""
+        return sorted(self._queue, key=lambda a: (a.priority * -1, a.index))
     
     @property
     def token_count(self) -> int:

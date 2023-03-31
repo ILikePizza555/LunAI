@@ -47,6 +47,7 @@ class ContextWindow:
     def __init__(self, max_tokens: int, encoding: str | Encoding = "cl100k_base"):
         self._queue: list[Message] = []
         self._token_count = 0
+        self._incrementor = 0
         self.encoding = encoding
         self.max_tokens = max_tokens
 
@@ -57,11 +58,18 @@ class ContextWindow:
     @property
     def message_iterator(self):
         """Returns an iterator of messages in order."""
-        return iter(self._queue)
+        return sorted(self._queue)
     
     @property
     def token_count(self) -> int:
         return self._token_count
+    
+    @property
+    def incrementor(self) -> int:
+        """Get the value of incrementor, then increase it by 1."""
+        rv = self._incrementor
+        self._incrementor += 1
+        return rv
     
     def drain_tokens(self):
         """Pops items from the window until the token count is under max_tokens"""
@@ -94,7 +102,7 @@ class ContextWindow:
         """
         return self.insert_message(Message(
             priority,
-            len(self._queue) * -1 if index is not None else index,
+            self.incrementor if index is None else index,
             role,
             content
         ))

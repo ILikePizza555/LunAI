@@ -93,10 +93,7 @@ class ContextWindow:
         return rv
     
     def insert_message(self, message: Message) -> list[Message]:
-        """
-        Inserts a message into the window. Automatically calls drain_tokens.
-        Note that **lower** `priority` and `index` values are **higher** priority. 
-        """
+        """Inserts a message into the window. Automatically calls drain_tokens."""
         token_count = Message.calculate_tokens(message, self.encoding)
         self._token_count += token_count
         
@@ -104,16 +101,21 @@ class ContextWindow:
         return self.drain_tokens()
     
     def insert_new_message(self, role: MessageRole, content: str, priority = 0, index = None) -> list[Message]:
-        """
-        Creates a new `Message` and inserts it into the window.
-        Note that **lower** `priority` and `index` values are **higher** priority.
-        """
+        """Creates a new `Message` and inserts it into the window."""
         return self.insert_message(Message(
             priority,
             self.incrementor if index is None else index,
             role,
             content
         ))
+    
+    def insert_new_messages(self, *args: tuple[MessageRole, str], priority = 0) -> list[Message]:
+        """Creates several new messages and inserts them into the window."""
+        messages = (Message(priority, self.incrementor, *x) for x in args)
+        rv = []
+        for m in messages:
+            rv.extend(self.insert_message(m))
+        return rv
 
     def clear(self, max_priority = 0):
         """Clears all messages with priority less than or equal to `max_priority`. Returns removed messages. """

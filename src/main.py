@@ -107,18 +107,18 @@ async def on_message(message: discord.Message):
 
         async with message.channel.typing():
             # Luna recieves messages in simple JSON
-            message = json.dumps({
+            ai_user_message = json.dumps({
                 "user": message.author.name,
                 "id": message.author.id,
                 "message": message.content
             })
-            app_logger.debug(f"[{correlation_id}] {message}")
+            app_logger.debug(f"[{correlation_id}] {ai_user_message}")
 
             timing_openai_start = time.perf_counter_ns()
             response = await ai.add_and_send_new_message(
                 message.channel,
                 MessageRole.USER,
-                message)
+                ai_user_message)
             timing_openai_end = time.perf_counter_ns()
         
         prompt_tokens = response.statistics["prompt_tokens"]

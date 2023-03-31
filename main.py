@@ -89,11 +89,11 @@ async def on_message(message: discord.Message):
             await process_self_commands(message)
             return
 
-        if message.content.startswith('$ping'):
+        if message.content.startswith("%ping"):
             await message.channel.send('Pong!')
             return
         
-        if message.content.startswith('$clearcache'):
+        if message.content.startswith("%reset"):
             if message.author.id in privilaged_ids:
                 await command_clear_cache(message.channel)
                 return

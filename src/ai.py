@@ -158,13 +158,8 @@ class Foxtail:
     """
     PROMPT_PRIORITY = 100
 
-    def __init__(self, prompt: str, api, context_window_size = 2900) -> None:
+    def __init__(self, api, context_window_factory) -> None:
         self._api = api
-
-        def context_window_factory():
-            rv = ContextWindow(context_window_size)
-            rv.insert_new_message(MessageRole.SYSTEM, prompt, Foxtail.PROMPT_PRIORITY)
-            return rv
         self._channel_context_windows = defaultdict(context_window_factory)
     
     @property

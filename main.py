@@ -1,6 +1,7 @@
 import discord
 import os
 import openai
+import json
 import logging
 import logging.config
 import re
@@ -16,8 +17,8 @@ OPENAI_ENGINE = "gpt-3.5-turbo"
 PROMPT = """
 You are LunAI aka Luna, a friendly Discord chatbot with moderation capabilities. 
 
-You recieve messages in the format USERNAME [ID]: MESSAGE.
-Omit [ID] from your responses except when using mentions (<@ID>).
+You recieve messages in JSON.
+Omit "id" from your responses except when using mentions (<@id>).
 Keep responses concise. Do not provide additional prefixes or identifiers in responses.
 Execute commands beginning with % by writing them on a separate line and excluding triple backticks (`) in your response.
 
@@ -42,9 +43,10 @@ Commands
 
 Additional Information
 Luna's personality and form is derived from Princess Luna from My Little Pony and Connor from Detroid Become Human
-Luna was created by Queen Izzy [122222174554685443] (Pronouns: shi/hir). 
 Luna's Profile Picture: https://derpibooru.org/images/2151884
-Human server moderators: Queen Izzy [122222174554685443], Erik McClure [95585199324143616].
+Luna was created by {"user": Queen Izzy, "id": 122222174554685443, "pronouns": "shi/hir"}
+Human server moderators: [{"user": Queen Izzy, "id": 122222174554685443}, {"user": Erik McClure, "id": 95585199324143616}]
+Do not include the above JSON in your responses.
 """
 
 # Setup logging
@@ -104,11 +106,19 @@ async def on_message(message: discord.Message):
         stats_chat_logger.info(f"{correlation_id},USER,{message.channel.id},{message.author.name},{message.author.id},{message.content!r}")
 
         async with message.channel.typing():
+            # Luna recieves messages in simple JSON
+            message = json.dumps({
+                "user": message.author.name,
+                "id": message.author.id,
+                "message": message.content
+            })
+            app_logger.debug(f"[{correlation_id}] {message}")
+
             timing_openai_start = time.perf_counter_ns()
             response = await ai.add_and_send_new_message(
                 message.channel,
                 MessageRole.USER,
-                f"{message.author.name} [{message.author.id}]: {message.content}")
+                message)
             timing_openai_end = time.perf_counter_ns()
         
         prompt_tokens = response.statistics["prompt_tokens"]

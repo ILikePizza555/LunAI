@@ -76,6 +76,9 @@ class ContextWindow:
         self._incrementor += 1
         return rv
     
+    def _recompute_token_count(self):
+        self._token_count = sum((Message.calculate_tokens(x, self.encoding) for x in self._queue))
+    
     def drain_tokens(self):
         """Pops items from the window until the token count is under max_tokens"""
         rv = []
@@ -111,11 +114,12 @@ class ContextWindow:
             role,
             content
         ))
-    
-    def clear(self):
-        self._queue.clear()
-        self._token_count = 0
 
+    def clear(self, max_priority = 0):
+        """Clears all messages with priority less than or equal to `max_priority`. Returns removed messages. """
+        self._queue = [x for x in self._queue if x.priority > max_priority]
+        heapq.heapify(self._queue)
+        self._recompute_token_count()
 
 class CompletionRespose(NamedTuple):
     """A standard type for responses from models"""

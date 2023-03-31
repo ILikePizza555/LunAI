@@ -114,6 +114,7 @@ class ContextWindow:
     
     def clear(self):
         self._queue.clear()
+        self._token_count = 0
 
 
 class CompletionRespose(NamedTuple):

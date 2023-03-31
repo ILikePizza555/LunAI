@@ -151,11 +151,16 @@ class Foxtail:
     I chose the name Foxtail because I spent like an hour trying to come up with a name and
     I just settled for the first thing I saw which was a scarf with a fox on it.
     """
-    def __init__(self, prompt: str, api, context_window_size = 2500) -> None:
-        # TODO: Prompt should be stored in the context window but this functionality doesn't exist yet
-        self.prompt = Message(0, 0, MessageRole.SYSTEM, prompt)
+    PROMPT_PRIORITY = 100
+
+    def __init__(self, prompt: str, api, context_window_size = 2900) -> None:
         self._api = api
-        self._channel_context_windows = defaultdict(lambda: ContextWindow(context_window_size))
+
+        def context_window_factory():
+            rv = ContextWindow(context_window_size)
+            rv.insert_new_message(MessageRole.SYSTEM, prompt, Foxtail.PROMPT_PRIORITY)
+            return rv
+        self._channel_context_windows = defaultdict(context_window_factory)
     
     @property
     def context_windows(self) -> defaultdict[TextChannel, ContextWindow]:
@@ -174,18 +179,12 @@ class Foxtail:
             raise LookupError(f"No context window for channel {channel.id} exists.")
 
         context_window = self._channel_context_windows[channel]
-
         if context_window.empty:
             raise ValueError(f"Channel {channel.id}'s context window is empty.")
-        
-        messages = [self.prompt]
-        messages.extend(context_window.message_iterator)
-
-        response: CompletionRespose = await self._api.get_completion(messages)
+        response: CompletionRespose = await self._api.get_completion(context_window.chat_order)
 
         if add_response:
-            response_message = Message(0, 0, MessageRole.ASSISTANT, response.content)
-            context_window.insert_message(response_message)
+            context_window.insert_new_message(MessageRole.ASSISTANT, response.content)
         
         return response
     

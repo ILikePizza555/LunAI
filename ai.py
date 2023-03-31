@@ -1,4 +1,5 @@
-from collections import deque, defaultdict
+import heapq
+from collections import defaultdict
 from dataclasses import dataclass, field
 from discord import TextChannel
 from enum import Enum
@@ -44,7 +45,7 @@ class ContextWindow:
     """Manages messages to form a context window that can be passed to the model."""
 
     def __init__(self, max_tokens: int, encoding: str | Encoding = "cl100k_base"):
-        self._queue: deque[Message] = deque()
+        self._queue: list[Message] = []
         self._token_count = 0
         self.encoding = encoding
         self.max_tokens = max_tokens
@@ -67,7 +68,7 @@ class ContextWindow:
         rv = []
 
         while self._token_count > self.max_tokens:
-            m = self._queue.popleft()
+            m = heapq.heappop(self._queue)
             m_tokens = Message.calculate_tokens(m, self.encoding)
             
             self._token_count -= m_tokens
@@ -76,18 +77,24 @@ class ContextWindow:
         return rv
     
     def insert_message(self, message: Message) -> list[Message]:
-        """Inserts a message into the window. Automatically calls drain_tokens"""
+        """
+        Inserts a message into the window. Automatically calls drain_tokens.
+        Note that **lower** `priority` and `index` values are **higher** priority. 
+        """
         token_count = Message.calculate_tokens(message, self.encoding)
         self._token_count += token_count
-
-        self._queue.append(message)
+        
+        heapq.heappush(self._queue, message)
         return self.drain_tokens()
     
     def insert_new_message(self, role: MessageRole, content: str, priority = 0, index = None) -> list[Message]:
-        """Creates a new `Message` and inserts it into the window."""
+        """
+        Creates a new `Message` and inserts it into the window.
+        Note that **lower** `priority` and `index` values are **higher** priority.
+        """
         return self.insert_message(Message(
             priority,
-            len(self._queue) if index is not None else index,
+            len(self._queue) * -1 if index is not None else index,
             role,
             content
         ))

@@ -12,6 +12,7 @@
             discordpy
             rtoml
             pytest
+            emoji
             (buildPythonPackage rec {
                 pname = "openai";
                 version = "0.27.2";

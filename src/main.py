@@ -136,10 +136,7 @@ async def on_message(message: discord.Message):
             app_logger.debug(f"[{correlation_id}] {ai_user_message}")
 
             timing_openai_start = time.perf_counter_ns()
-            response = await ai.add_and_send_new_message(
-                message.channel,
-                MessageRole.USER,
-                ai_user_message)
+            response = await ai.add_and_send_new_message(message.channel, ai_user_message)
             timing_openai_end = time.perf_counter_ns()
         
         prompt_tokens = response.statistics["prompt_tokens"]

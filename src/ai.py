@@ -192,8 +192,8 @@ class Foxtail:
     
     async def add_and_send_new_message(self, 
                                  channel: TextChannel,
-                                 role: MessageRole, 
                                  content: str,
+                                 role: MessageRole = MessageRole.USER, 
                                  priority = 0,
                                  index = None,
                                  add_response = True) -> CompletionRespose:
